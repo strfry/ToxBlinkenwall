@@ -27,7 +27,7 @@
 #include <EGL/egl.h>
 #include "esUtil.h"
 
-#define RPI_NO_X 1 // use Framebuffer (not X)
+//#define RPI_NO_X 1 // use Framebuffer (not X)
 
 #ifdef RPI_NO_X
 #include  "bcm_host.h"
