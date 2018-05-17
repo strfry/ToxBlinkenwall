@@ -204,6 +204,7 @@ static bool toxav_bit_rate_set(ToxAV *av, uint32_t friend_number, int32_t audio_
 #include <stdarg.h>
 #include <time.h>
 #include <dirent.h>
+#include <limits.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
