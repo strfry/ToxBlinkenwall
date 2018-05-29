@@ -1,0 +1,5 @@
+[wrap-git]
+directory = c-toxcore
+url = https://github.com/zoff99/c-toxcore_team
+revision = strfry/meson
+
