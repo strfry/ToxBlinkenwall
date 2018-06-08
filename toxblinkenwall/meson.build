@@ -2,10 +2,12 @@ project('ToxBlinkenwall', 'c', license: 'GPL')
 
 compiler = meson.get_compiler('c')
 
-raspberry_pi = false
+raspberry_pi = true
 
-toxcore = dependency('libtoxcore', fallback: ['toxcore', 'toxcore'])
-toxav = dependency('libtoxav', fallback: ['toxcore', 'toxav'])
+toxcore_sub = subproject('toxcore')
+
+toxcore = toxcore_sub.get_variable('toxcore')
+toxav = toxcore_sub.get_variable('toxav')
 
 alsa = dependency('alsa')
 v4lconvert = compiler.find_library('v4lconvert')

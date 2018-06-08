@@ -1,5 +1,5 @@
 [wrap-git]
-directory = c-toxcore
+directory = toxcore
 url = https://github.com/zoff99/c-toxcore_team
-revision = strfry/meson
+revision = strfry/codec_files
 
