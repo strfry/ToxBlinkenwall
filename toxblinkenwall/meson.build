@@ -2,7 +2,7 @@ project('ToxBlinkenwall', 'c', license: 'GPL')
 
 compiler = meson.get_compiler('c')
 
-raspberry_pi = true
+raspberry_pi = dependency('brcmegl', required: false).found()
 
 toxcore_sub = subproject('toxcore')
 
