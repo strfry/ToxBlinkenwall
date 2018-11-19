@@ -67,6 +67,7 @@ echo "with system libs for: $syslibs_str__"
 echo "installing more system packages ..."
 
 apk add wget git cmake ffmpeg-dev x264-dev automake gcc v4l-utils-dev \
+	opus-dev libvpx-dev \
 	libsodium-dev make libc-dev linux-headers \
 	autoconf automake libtool
 
@@ -200,10 +201,10 @@ rm -Rf tbw_build
 mkdir -p tbw_build
 cd tbw_build/
 
-git clone https://github.com/zoff99/ToxBlinkenwall xx > /dev/null 2>&1
-mv xx/* . > /dev/null 2>&1
-mv xx/.??* . > /dev/null 2>&1
-rm -Rf xx > /dev/null 2>&1
+git clone https://github.com/strfry/ToxBlinkenwall -b alpine xx # > /dev/null 2>&1
+mv xx/* . #> /dev/null 2>&1
+mv xx/.??* . #> /dev/null 2>&1
+rm -Rf xx #x> /dev/null 2>&1
 
 cd toxblinkenwall
 
@@ -211,10 +212,10 @@ sed -i -e 's#define HAVE_OUTPUT_OPENGL .*#define HAVE_FRAMEBUFFER 1#' toxblinken
 
 gcc -g -O3 toxblinkenwall.c rb.c ringbuf.c \
 -I$_INST_/include/ -L$_INST_/lib -fPIC \
--l:libtoxcore.a -l:libtoxav.a -l:libtoxencryptsave.a -l:libsodium.a \
+-ltoxcore -ltoxav -ltoxencryptsave -lsodium \
 -o toxblinkenwall \
--lasound -lm -lpthread -l:libopus.a -l:libvpx.a -l:libavcodec.a \
--l:libx264.a -l:libavutil.a -l:libv4lconvert.a -lrt -l:libjpeg.a
+-lasound -lm -lpthread -lopus  -lvpx -lavcodec \
+-lx264 -lavutil -lv4lconvert -lrt -ljpeg
 
 
 echo "###############"
@@ -227,7 +228,7 @@ ELAPSED_TIME=$(($SECONDS - $START_TIME))
 
 echo "compile time: $(($ELAPSED_TIME/60)) min $(($ELAPSED_TIME%60)) sec"
 
-
+mkdir -p /artefacts /script
 ls -hal toxblinkenwall && cp -av toxblinkenwall /artefacts/toxblinkenwall
 
 # so files can be accessed outside of docker
