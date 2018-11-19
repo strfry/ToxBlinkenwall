@@ -69,7 +69,8 @@ echo "installing more system packages ..."
 apk add wget git cmake ffmpeg-dev x264-dev automake gcc v4l-utils-dev \
 	opus-dev libvpx-dev \
 	libsodium-dev make libc-dev linux-headers \
-	autoconf automake libtool
+	autoconf automake libtool \
+	imagemagick libqrencode util-linux
 
 # cmake3 ?
 type -a cmake
