@@ -20,10 +20,12 @@ if (raspberry_pi)
 	deps += dependency('brcmglesv2')
 	deps += dependency('brcmegl')
 	c_args += '-DRPI_NO_X'
+	message('Building for Raspberry Pi')
 else
 	deps += dependency('glesv2')
 	deps += dependency('egl')
 	deps += dependency('x11')
+	message('Building for Linux/PC')
 endif
 
 sources = [
