@@ -7,8 +7,15 @@ export fb_device=$(ls -1 /dev/fb*|head -1)
 ##### -------------------------------------
 
 ##### -------------------------------------
-export FB_WIDTH=640
-export FB_HEIGHT=480
+
+fbset_out=$(fbset | grep geometry)
+
+export FB_WIDTH=$(echo $fbset_out | cut -d " " -f 2)
+export FB_HEIGHT=$(echo $fbset_out | cut -d " " -f 3)
+
+export BKWALL_WIDTH=$FB_WIDTH
+export BKWALL_HEIGHT=$FB_HEIGHT
+
 
 if [ "$IS_ON""x" == "RASPI""x" ]; then
   export BKWALL_WIDTH=640
