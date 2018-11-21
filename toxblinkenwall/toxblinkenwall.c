@@ -202,8 +202,8 @@ static const char global_version_string[] = "0.99.31";
 #define V4LCONVERT 1
 
 // --------- video output: choose only 1 of those! ---------
-// #define HAVE_FRAMEBUFFER 1   // fb output           [* DEFAULT]
-#define HAVE_OUTPUT_OPENGL 1 // openGL to framebuffer output
+#define HAVE_FRAMEBUFFER 1   // fb output           [* DEFAULT]
+//#define HAVE_OUTPUT_OPENGL 1 // openGL to framebuffer output
 // --------- video output: choose only 1 of those! ---------
 //
 // --------- audio recording: choose only 1 of those! ---------
@@ -8904,6 +8904,7 @@ float get_opengl_w_factor(float scale)
 // Create a shader object, load the shader source, and
 // compile the shader.
 //
+/// TODO(strfry): Duplicated in openGL/esShader.c ?
 GLuint LoadShader(GLenum type, const char *shaderSrc)
 {
     GLuint shader;
@@ -9088,7 +9089,8 @@ int Init(ESContext *esContext, int ww, int hh)
     // fill background with some color
     // glClearColor(0.3f, 0.3f, 0.3f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
-    eglSwapBuffers(esContext->eglDisplay, esContext->eglSurface);
+    //eglSwapBuffers(esContext->eglDisplay, esContext->eglSurface);
+    swap_buffers();
     // prepare overlay texture
     userData->ol_ww = OVERLAY_WIDTH_PX;
     userData->ol_hh = OVERLAY_HEIGHT_PX;
@@ -9782,7 +9784,8 @@ void *thread_opengl(void *data)
 
             if (did_draw_frame2 == 1)
             {
-                eglSwapBuffers(esContext.eglDisplay, esContext.eglSurface);
+                //eglSwapBuffers(esContext.eglDisplay, esContext.eglSurface);
+                swap_buffers();
                 // long long timspan_in_ms = 99999;
                 // timspan_in_ms = __utimer_stop(&tm_01, "opengl_draw_cycle:", 0);
                 frames++;

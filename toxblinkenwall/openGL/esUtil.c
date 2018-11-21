@@ -30,9 +30,9 @@
 #define RPI_NO_X 0 // use Framebuffer (not X)
 #define DRM_NO_X 1
 
-#ifdef RPI_NO_X
+#if RPI_NO_X
 #include "esContextRPI.c.h"
-#elif defined(DRM_NO_X)
+#elif DRM_NO_X
 #include "esContextDRM.c.h"
 #else
 #include "esContextX11.c.h"
@@ -43,7 +43,7 @@
 //
 //    Creates an EL rendering context and all associated elements
 //
-EGLBoolean CreateEGLContext ( EGLNativeDisplayType nativeDisplay, EGLNativeWindowType hWnd,
+EGLBoolean CreateEGLContext ( EGLNativeWindowType hWnd,
                               EGLDisplay* eglDisplay,
                               EGLContext* eglContext, EGLSurface* eglSurface,
                               EGLint attribList[])
@@ -131,7 +131,7 @@ EGLBoolean CreateEGLContext ( EGLNativeDisplayType nativeDisplay, EGLNativeWindo
 //
 void ESUTIL_API esInitContext ( ESContext *esContext )
 {
-#ifdef RPI_NO_X
+#if RPI_NO_X
    bcm_host_init();
 #endif
    if ( esContext != NULL )
