@@ -27,27 +27,24 @@
 #include <EGL/egl.h>
 #include "esUtil.h"
 
-#define RPI_NO_X 1 // use Framebuffer (not X)
+#define RPI_NO_X 0 // use Framebuffer (not X)
+#define DRM_NO_X 1
 
 #ifdef RPI_NO_X
-#include  "bcm_host.h"
+#include "esContextRPI.c.h"
+#elif defined(DRM_NO_X)
+#include "esContextDRM.c.h"
 #else
-#include  <X11/Xlib.h>
-#include  <X11/Xatom.h>
-#include  <X11/Xutil.h>
-#endif
-
-#ifndef RPI_NO_X
-// X11 related local variables
-static Display *x_display = NULL;
+#include "esContextX11.c.h"
 #endif
 
 ///
 // CreateEGLContext()
 //
-//    Creates an EGL rendering context and all associated elements
+//    Creates an EL rendering context and all associated elements
 //
-EGLBoolean CreateEGLContext ( EGLNativeWindowType hWnd, EGLDisplay* eglDisplay,
+EGLBoolean CreateEGLContext ( EGLNativeDisplayType nativeDisplay, EGLNativeWindowType hWnd,
+                              EGLDisplay* eglDisplay,
                               EGLContext* eglContext, EGLSurface* eglSurface,
                               EGLint attribList[])
 {
@@ -58,11 +55,7 @@ EGLBoolean CreateEGLContext ( EGLNativeWindowType hWnd, EGLDisplay* eglDisplay,
    EGLContext context;
    EGLSurface surface;
    EGLConfig config;
-   #ifndef RPI_NO_X
    EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
-   #else
-   EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-   #endif
    
    
    // Get Display
@@ -123,176 +116,6 @@ EGLBoolean CreateEGLContext ( EGLNativeWindowType hWnd, EGLDisplay* eglDisplay,
    *eglContext = context;
    return EGL_TRUE;
 } 
-
-#ifdef RPI_NO_X
-///
-//  WinCreate() - RaspberryPi, direct surface (No X, Xlib)
-//
-//      This function initialized the display and window for EGL
-//
-EGLBoolean WinCreate(ESContext *esContext, const char *title, int display_width, int display_height, int frame_width, int frame_height)
-{
-   int32_t success = 0;
-
-   static EGL_DISPMANX_WINDOW_T nativewindow;
-
-   DISPMANX_ELEMENT_HANDLE_T dispman_element;
-   DISPMANX_DISPLAY_HANDLE_T dispman_display;
-   DISPMANX_UPDATE_HANDLE_T dispman_update;
-   VC_RECT_T dst_rect;
-   VC_RECT_T src_rect;
-   
-   // create an EGL window surface, passing context width/height
-   success = graphics_get_display_size(0 /* LCD */, &display_width, &display_height);
-   if ( success < 0 )
-   {
-      return EGL_FALSE;
-   }
-
-   dst_rect.x = 0;
-   dst_rect.y = 0;
-   dst_rect.width = display_width;
-   dst_rect.height = display_height;
-      
-   src_rect.x = 0;
-   src_rect.y = 0;
-   src_rect.width = frame_width;
-   src_rect.height = frame_height;   
-
-   dispman_display = vc_dispmanx_display_open( 0 /* LCD */);
-   dispman_update = vc_dispmanx_update_start( 0 );
-         
-   dispman_element = vc_dispmanx_element_add ( dispman_update, dispman_display,
-      0/*layer*/, &dst_rect, 0/*src*/,
-      &src_rect, DISPMANX_PROTECTION_NONE, 0 /*alpha*/, 0/*clamp*/, 0/*transform*/);
-      
-   nativewindow.element = dispman_element;
-   nativewindow.width = display_width;
-   nativewindow.height = display_height;
-   vc_dispmanx_update_submit_sync( dispman_update );
-   
-   esContext->hWnd = &nativewindow;
-
-	return EGL_TRUE;
-}
-///
-//  userInterrupt()
-//
-//      Reads from X11 event loop and interrupt program if there is a keypress, or
-//      window close action.
-//
-GLboolean userInterrupt(ESContext *esContext)
-{
-	//GLboolean userinterrupt = GL_FALSE;
-    //return userinterrupt;
-    
-    // Ctrl-C for now to stop
-    
-    return GL_FALSE;
-}
-#else
-///
-//  WinCreate()
-//
-//      This function initialized the native X11 display and window for EGL
-//
-EGLBoolean WinCreate(ESContext *esContext, const char *title, int display_width, int display_height, int frame_width, int frame_height)
-//EGLBoolean WinCreate(ESContext *esContext, const char *title, int, int, int, int)
-{
-    Window root;
-    XSetWindowAttributes swa;
-    XSetWindowAttributes  xattr;
-    Atom wm_state;
-    XWMHints hints;
-    XEvent xev;
-    EGLConfig ecfg;
-    EGLint num_config;
-    Window win;
-
-    /*
-     * X11 native display initialization
-     */
-
-    x_display = XOpenDisplay(NULL);
-    if ( x_display == NULL )
-    {
-        return EGL_FALSE;
-    }
-
-    root = DefaultRootWindow(x_display);
-
-    swa.event_mask  =  ExposureMask | PointerMotionMask | KeyPressMask;
-    win = XCreateWindow(
-               x_display, root,
-               0, 0, esContext->width, esContext->height, 0,
-               CopyFromParent, InputOutput,
-               CopyFromParent, CWEventMask,
-               &swa );
-
-    xattr.override_redirect = FALSE;
-    XChangeWindowAttributes ( x_display, win, CWOverrideRedirect, &xattr );
-
-    hints.input = TRUE;
-    hints.flags = InputHint;
-    XSetWMHints(x_display, win, &hints);
-
-    // make the window visible on the screen
-    XMapWindow (x_display, win);
-    XStoreName (x_display, win, title);
-
-    // get identifiers for the provided atom name strings
-    wm_state = XInternAtom (x_display, "_NET_WM_STATE", FALSE);
-
-    memset ( &xev, 0, sizeof(xev) );
-    xev.type                 = ClientMessage;
-    xev.xclient.window       = win;
-    xev.xclient.message_type = wm_state;
-    xev.xclient.format       = 32;
-    xev.xclient.data.l[0]    = 1;
-    xev.xclient.data.l[1]    = FALSE;
-    XSendEvent (
-       x_display,
-       DefaultRootWindow ( x_display ),
-       FALSE,
-       SubstructureNotifyMask,
-       &xev );
-
-    esContext->hWnd = (EGLNativeWindowType) win;
-    return EGL_TRUE;
-}
-
-
-///
-//  userInterrupt()
-//
-//      Reads from X11 event loop and interrupt program if there is a keypress, or
-//      window close action.
-//
-GLboolean userInterrupt(ESContext *esContext)
-{
-    XEvent xev;
-    KeySym key;
-    GLboolean userinterrupt = GL_FALSE;
-    char text;
-
-    // Pump all messages from X server. Keypresses are directed to keyfunc (if defined)
-    while ( XPending ( x_display ) )
-    {
-        XNextEvent( x_display, &xev );
-        if ( xev.type == KeyPress )
-        {
-            if (XLookupString(&xev.xkey,&text,1,&key,0)==1)
-            {
-                if (esContext->keyFunc != NULL)
-                    esContext->keyFunc(esContext, text, 0, 0);
-            }
-        }
-        if ( xev.type == DestroyNotify )
-            userinterrupt = GL_TRUE;
-    }
-    return userinterrupt;
-}
-#endif
 
 //////////////////////////////////////////////////////////////////
 //
