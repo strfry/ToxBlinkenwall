@@ -210,7 +210,8 @@ static const char global_version_string[] = "0.99.33";
 //
 // --------- video output: choose only 1 of those! ---------
 // #define HAVE_FRAMEBUFFER 1   // fb output           [* DEFAULT]
-#define HAVE_OUTPUT_OPENGL 1 // openGL to framebuffer output
+// #define HAVE_OUTPUT_OPENGL 1 // openGL to framebuffer output
+#define HAVE_OUTPUT_OMX 1
 // --------- video output: choose only 1 of those! ---------
 //
 // --------- audio recording: choose only 1 of those! ---------
@@ -315,13 +316,18 @@ int hw_encoder_wanted_prev = 1;
 #define PI_NORMAL_CAM_W 1280 // 896 // 1280;
 #define PI_NORMAL_CAM_H 720 // 512 // 720;
 
+#include <linux/fb.h>
 
-#ifdef HAVE_FRAMEBUFFER
-    #include <linux/fb.h>
+#ifdef HAVE_OUTPUT_OMX
+    #include "omx.h"
+
+    struct omx_state omx;
+    uint8_t omx_initialized = 0;
+    uint32_t omx_w = 0;
+    uint32_t omx_h = 0;
 #endif
 
 #ifdef HAVE_OUTPUT_OPENGL
-#include <linux/fb.h>
 #include "openGL/esUtil.h"
 
 #define OPENGL_TEXT_FILTER_ GL_LINEAR
@@ -747,14 +753,8 @@ int global_cam_device_fd = 0;
 int global_framebuffer_device_fd = 0;
 int64_t global_disconnect_friend_num = -1;
 
-#ifdef HAVE_FRAMEBUFFER
-    struct fb_var_screeninfo var_framebuffer_info;
-    struct fb_fix_screeninfo var_framebuffer_fix_info;
-#endif
-#ifdef HAVE_OUTPUT_OPENGL
-    struct fb_var_screeninfo var_framebuffer_info;
-    struct fb_fix_screeninfo var_framebuffer_fix_info;
-#endif
+struct fb_var_screeninfo var_framebuffer_info;
+struct fb_fix_screeninfo var_framebuffer_fix_info;
 
 struct opengl_video_frame_data
 {
@@ -1406,7 +1406,7 @@ void button_d()
 /* This routine will be called by the PortAudio engine when audio is needed */
 static int portaudio_data_callback(const void *inputBuffer,
                                    void *outputBuffer,
-                                   unsigned long framesPerBuffer,
+                                   unsigned long framesPerBuffer,have_frame
                                    const PaStreamCallbackTimeInfo *timeInfo,
                                    PaStreamCallbackFlags statusFlags,
                                    void *userData)
@@ -6357,15 +6357,19 @@ static void *video_play(void *dummy)
     // dbg(9, "VP-DEBUG:004:y_layer_size=%d\n", y_layer_size);
     // dbg(9, "VP-DEBUG:004:u_layer_size=%d\n", u_layer_size);
     // dbg(9, "VP-DEBUG:004:v_layer_size=%d\n", v_layer_size);
+#ifndef HAVE_OUTPUT_OMX
     uint8_t *y = (uint8_t *)calloc(1, y_layer_size + u_layer_size + v_layer_size);
     uint8_t *u = (uint8_t *)(y + y_layer_size);
     uint8_t *v = (uint8_t *)(y + y_layer_size + u_layer_size);
+
     // dbg(9, "VP-DEBUG:005:video__y=%p\n", video__y);
     memcpy(y, video__y, y_layer_size);
     // dbg(9, "VP-DEBUG:006:video__u=%p\n", video__u);
     memcpy(u, video__u, u_layer_size);
     // dbg(9, "VP-DEBUG:007:video__v=%p\n", video__v);
     memcpy(v, video__v, v_layer_size);
+#endif
+
     // dbg(9, "VP-DEBUG:008\n");
     //dbg(9, "VP-DEBUG:009\n");
     uint32_t frame_width_px = (uint32_t) max(frame_width_px1, abs(ystride_));
@@ -6433,6 +6437,44 @@ static void *video_play(void *dummy)
 #else
     //PL// sem_post(&video_play_lock);
 #endif
+    sem_post(&video_play_lock);
+
+#ifdef HAVE_OUTPUT_OMX
+    if (!omx_initialized) {
+        omx_init(&omx);
+        omx_initialized = 1;
+    }
+
+    if (full_width != omx_w || full_height != omx_h) {
+        int err = omx_display_enable(&omx, full_width, full_height, full_width); // omx can't deal with the weird strides reported by toxav
+        if (err) return;
+        omx_w = full_width;
+        omx_h = full_height;
+    }
+
+
+    void* buf;
+    uint32_t len;
+
+    omx_display_input_buffer(&omx, &buf, &len);
+
+    for (int i = 0; i < video__height; i++) {
+        uint8_t* base = buf;
+        uint8_t* ubase = base + video__width * video__height;
+        uint8_t* vbase = base + video__width * video__height + video__width * video__height / 4;
+        uint8_t* yline = base + video__width * i;
+        uint8_t* uline = ubase + video__width / 2 * i / 2;
+        uint8_t* vline = vbase + video__width / 2 * i / 2;
+
+        memcpy(yline, video__y + ystride * i, video__width);
+        memcpy(uline, video__u + ustride * i / 2, video__width / 2);
+        memcpy(vline, video__v + vstride * i / 2, video__width / 2);
+    }
+
+
+    omx_display_flush_buffer(&omx);
+#endif
+
 #ifdef HAVE_FRAMEBUFFER
     full_width = var_framebuffer_info.xres;
     full_height = var_framebuffer_info.yres;
