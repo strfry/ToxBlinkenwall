@@ -1,11 +1,12 @@
 #include "omx.h"
 
 #include <assert.h>
+#include <signal.h>
 
 // https://github.com/raspberrypi/userland/blob/master/host_applications/linux/apps/hello_pi/hello_encode/encode.c
-#define WIDTH     320
-#define HEIGHT    240
-#define STRIDE    320
+#define WIDTH     640
+#define HEIGHT    480
+#define STRIDE    640
 
 // generate an animated test card in YUV format
 static int
@@ -23,32 +24,39 @@ generate_test_card(void *buf, uint32_t* filledLen, int frame)
       for (i = 0; i < WIDTH / 2; i++) {
          int z = (((i + frame) >> 4) ^ ((j + frame) >> 4)) & 15;
          py[0] = py[1] = py[STRIDE] = py[STRIDE + 1] = 0x80 + z * 0x8;
+         if(i < 4 || i > (WIDTH / 2 - 20)) py[0] = py[1] = py[STRIDE] = py[STRIDE + 1] = 0x0f; // mark horizontal border
+         if(j  < 4 || j > (HEIGHT / 2 - 40)) py[0] |= py[1] |= py[STRIDE] |= py[STRIDE + 1] |= 0xf0; // mark vertical border
          pu[0] = 0x00 + z * 0x10;
          pv[0] = 0x80 + z * 0x30;
          py += 2;
          pu++;
          pv++;
+
       }
    }
    *filledLen = (STRIDE* HEIGHT * 3) >> 1;
    return 1;
 }
 
+struct omx_state omx;
 
+void deinit(int sig)
+{
+    omx_deinit(&omx);
+}
 
 int main()
 {
-    struct omx_state omx;
     void* pbuf;
     uint32_t buf_len, fill_len, i;
     int ret;
 
-    i = 100;
-
-    debug_log();
+    i = 1000;
 
     ret = omx_init(&omx);
     assert(ret == 0);
+
+    signal(SIGINT, deinit);
 
     ret = omx_display_enable(&omx, WIDTH, HEIGHT, STRIDE);
     assert(ret == 0);
@@ -63,6 +71,7 @@ int main()
         ret = omx_display_flush_buffer(&omx);
         assert(ret == 0);
     }
-    
+
+    deinit(0);
 }
 
