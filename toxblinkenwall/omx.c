@@ -28,6 +28,7 @@ void usleep_usec(uint64_t msec);
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 /* Avoids a VideoCore header warning about clock_gettime() */
 #include <time.h>
