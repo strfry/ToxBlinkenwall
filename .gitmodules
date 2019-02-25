@@ -1,0 +1,4 @@
+[submodule "c-toxcore"]
+	path = c-toxcore
+	url = ../c-toxcore
+	branch = zoff99/zoxcore_local_fork
